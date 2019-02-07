@@ -2,8 +2,6 @@ This is a guide to using [YubiKey](https://www.yubico.com/products/yubikey-hardw
 
 Keys stored on YubiKey are non-exportable (as opposed to file-based keys that are stored on disk) and are convenient for everyday use. Instead of having to remember and enter passphrases to unlock SSH/GPG keys, YubiKey needs only a physical touch after being unlocked with a PIN code. All signing and encryption operations happen on the card, rather than in OS memory.
 
-**New!** [drduh/Purse](https://github.com/drduh/Purse) is a password manager which uses GPG and YubiKey.
-
 If you have a comment or suggestion, please open an [issue](https://github.com/drduh/YubiKey-Guide/issues) on GitHub.
 
 - [Purchase YubiKey](#purchase-yubikey)
@@ -69,28 +67,45 @@ Consider purchasing a pair of YubiKeys, programming both, and storing one in a s
 
 # Live image
 
-It is recommended to generate cryptographic keys and configure YubiKey from a secure environment to minimize exposure. One way to do that is by downloading and booting to a [Debian Live](https://www.debian.org/CD/live/) or [Tails](https://tails.boum.org/index.en.html) image loaded from a USB drive into memory.
+It is recommended to generate cryptographic keys and configure YubiKey from a secure environment to minimize exposure. One way to do that is by downloading and booting to a [Ubuntu](http://cdimage.ubuntu.com/ubuntu-gnome/releases/16.04.5/release/ubuntu-gnome-16.04.5-desktop-amd64.iso) or [Tails](hottps://tails.boum.org/index.en.html) image loaded from a USB drive into memory.
 
 Download the latest image and verify its integrity:
-
-```console
-$ curl -LfO https://cdimage.debian.org/debian-cd/current-live/amd64/iso-hybrid/debian-live-9.6.0-amd64-xfce.iso
-$ curl -LfO https://cdimage.debian.org/debian-cd/current-live/amd64/iso-hybrid/SHA512SUMS
-$ curl -LfO https://cdimage.debian.org/debian-cd/current-live/amd64/iso-hybrid/SHA512SUMS.sign
-
-$ gpg --verify SHA512SUMS.sign SHA512SUMS
-[...]
-gpg: Good signature from "Debian CD signing key <debian-cd@lists.debian.org>" [unknown]
-[...]
 
 $ grep $(sha512sum debian-live-9.6.0-amd64-xfce.iso) SHA512SUMS
 e35dd65fe1b078f71fcf04fa749a05bfefe4aa11a9e80f116ceec0566d65636a4ac84a9aff22aa3f7a8eeb10289d0c2f54dfe7c599d8aa16663e4f9a74f3eec5 debian-live-9.6.0-amd64-xfce.iso
 ```
 
+I'm using Ubuntu Gnome 16.04.5:
+
+```console
+$ curl -LfO http://cdimage.ubuntu.com/ubuntu-gnome/releases/16.04.5/release/ubuntu-gnome-16.04.5-desktop-amd64.iso
+```
+
+You probably want to verify the integrity, so make sure you've got the Ubuntu signing keys:
+
+```console
+$ gpg2 --keyserver hkp://keyserver.ubuntu.com --recv-keys 0x46181433FBB75451 0xD94AA3F0EFE21092
+$ curl -LfO http://cdimage.ubuntu.com/ubuntu-gnome/releases/16.04.5/release/SHA256SUMS
+$ curl -LfO http://cdimage.ubuntu.com/ubuntu-gnome/releases/16.04.5/release/SHA256SUMS.gpg
+$ gpg2 --verify SHA256SUMS.gpg SHA256SUMS
+gpg: Signature made Thu 02 Aug 2018 03:03:04 AM PDT using DSA key ID FBB75451
+gpg: Good signature from "Ubuntu CD Image Automatic Signing Key <cdimage@ubuntu.com>" [unknown]
+gpg: WARNING: This key is not certified with a trusted signature!
+gpg:          There is no indication that the signature belongs to the owner.
+Primary key fingerprint: C598 6B4F 1257 FFA8 6632  CBA7 4618 1433 FBB7 5451
+gpg: Signature made Thu 02 Aug 2018 03:03:04 AM PDT using RSA key ID EFE21092
+gpg: Good signature from "Ubuntu CD Image Automatic Signing Key (2012) <cdimage@ubuntu.com>" [unknown]
+gpg: WARNING: This key is not certified with a trusted signature!
+gpg:          There is no indication that the signature belongs to the owner.
+Primary key fingerprint: 8439 38DF 228D 22F7 B374  2BC0 D94A A3F0 EFE2 1092
+$ grep $(sha256sum ubuntu-gnome-16.04.5-desktop-amd64.iso) SHA256SUMS 
+SHA256SUMS:94841a220d7ca799bd3725f6081f0374894d1e1e405b3937dc2cade112c31b0d *ubuntu-gnome-16.04.5-desktop-amd64.iso
+```
+
 Mount a USB disk and copy the image over to it:
 
 ```console
-$ sudo dd if=debian-live-9.6.0-amd64-xfce.iso of=/dev/sdc bs=4M && sync
+$ sudo dd if=ubuntu-gnome-16.04.5-desktop-amd64.iso of=/dev/sdc bs=4M && sync
 ```
 
 Shut down the computer and disconnect any hard drives and unnecessary peripherals.
@@ -101,17 +116,15 @@ Plug in the USB disk and boot to the live image. Configure networking to continu
 
 Install several packages required for the following steps:
 
-**Debian/Ubuntu**
+**Ubuntu**
 
 ```console
 $ sudo apt-get update
 
 $ sudo apt-get install -y \
-     curl gnupg2 gnupg-agent \
-     cryptsetup scdaemon pcscd \
-     yubikey-personalization \
-     dirmngr \
-     secure-delete
+     gnupg2 gnupg-agent \
+     scdaemon pcscd \
+     yubikey-personalization
 ```
 
 **Arch Linux**
@@ -152,7 +165,60 @@ $ cat /proc/sys/kernel/random/entropy_avail
 849
 ```
 
-**Optional** A hardware random number generator like [OneRNG](http://onerng.info/onerng/) will increase the speed of entropy generation and possibly its quality. To install and configure OneRNG:
+**Optional** A hardware random number generator like [OneRNG](http://onerng.info/onerng/) will increase the speed of entropy generation and possibly its quality. 
+
+### ChaosKey
+
+https://altusmetrum.org/ChaosKey/
+
+One of the developers is Keith Packard, someone I've met, lending some level of trust.
+
+Supported out of the box.
+
+### InfiniteNoise
+
+https://13-37.org/en/2017/07/packages-for-infinite-noise-trng/
+
+Requires a driver, which can be installed thusly:
+
+```console
+$ curl -LfO   https://13-37.org/files/infnoise_0.3.0_amd64.deb
+$ curl -LfO   https://13-37.org/files/infnoise-tools_0.3.0_amd64.deb
+
+$ gpg2 --keyserver keys.gnupg.net --recv-keys 0x975DC25C4E730A3C
+gpg: key 4E730A3C: public key "Code Signing Key 13-37.org <pkg@13-37.org>" imported
+gpg: Total number processed: 1
+gpg:               imported: 1
+gpg: no ultimately trusted keys found
+
+$ gpg2 --verify infnoise_0.3.0_amd64.deb
+gpg: Signature made Mon 29 Oct 2018 05:44:53 PM UTC using RSA key ID 4E730A3C
+gpg: Good signature from "Code Signing Key 13-37.org <pkg@13-37.org>" [unknown]
+gpg: WARNING: This key is not certified with a trusted signature!
+gpg:          There is no indication that the signature belongs to the owner.
+Primary key fingerprint: 71AE 099B 262D C0B4 93E6  EE71 975D C25C 4E73 0A3C
+
+$ gpg2 --verify infnoise-tools_0.3.0_amd64.deb
+gpg: Signature made Mon 29 Oct 2018 05:44:54 PM UTC using RSA key ID 4E730A3C
+gpg: Good signature from "Code Signing Key 13-37.org <pkg@13-37.org>" [unknown]
+gpg: WARNING: This key is not certified with a trusted signature!
+gpg:          There is no indication that the signature belongs to the owner.
+Primary key fingerprint: 71AE 099B 262D C0B4 93E6  EE71 975D C25C 4E73 0A3C
+
+$ sudo apt install libftdi1
+
+$ sudo dpkg -i infnoise_0.3.0_amd64.deb infnoise-tools_0.3.0_amd64.deb 
+(Reading database ... 164377 files and directories currently installed.)
+Preparing to unpack infnoise_0.3.0_amd64.deb ...
+Unpacking infnoise (0.3.0) over (0.3.0) ...
+Selecting previously unselected package infnoise-tools.
+Preparing to unpack infnoise-tools_0.3.0_amd64.deb ...
+Unpacking infnoise-tools (0.3.0) ...
+Setting up infnoise (0.3.0) ...
+Setting up infnoise-tools (0.3.0) ...
+```
+
+### OneRNG:
 
 ```console
 $ sudo apt-get install -y rng-tools at python-gnupg openssl
@@ -187,21 +253,37 @@ $ cat /proc/sys/kernel/random/entropy_avail
 
 An entropy pool value greater than 3000 is sufficient.
 
-# Creating keys
-
-Create a temporary directory which will be deleted on [reboot](https://en.wikipedia.org/wiki/Tmpfs):
+### Check entropy generation:
 
 ```console
-$ export GNUPGHOME=$(mktemp -d) ; echo $GNUPGHOME
-/tmp/tmp.aaiTTovYgo
+$ hexdump -C /dev/random
+$ dd if=/dev/random of=/dev/null status=progress
 ```
 
-Create a hardened configuration for GPG with the following options or by downloading [drduh/config/gpg.conf](https://github.com/drduh/config/blob/master/gpg.conf):
+# Encrypted filesystem
+
+We need a place to keep the original keys generated, in case the Yubikey is ever lost or destroyed and needs to be recreated.
+
+System Tools / Disks
+
+Choose the removable disk, create a luks + ext4 file system, choose a name (sekrit) and a decryption pass phrase (***********)
+
+# Creating keys
+
+## Create a .gnupg directory
+
+On the encrypted file system, create a directory to hold your keys:
 
 ```console
-$ curl -o $GNUPGHOME/gpg.conf https://raw.githubusercontent.com/drduh/config/master/gpg.conf
+$ mkdir /media/ubuntu-gnome/sekrit/.gnupg
+$ chmod 700 /media/ubuntu-gnome/sekrit/.gnupg
+$ export GNUPGHOME=/media/ubuntu-gnome/sekrit/.gnupg
+```
 
-$ cat $GNUPGHOME/gpg.conf
+Create a hardened configuration for GPG with the following options:
+
+```console
+$ cat > $GNUPGHOME/gpg.conf <<EOF
 personal-cipher-preferences AES256 AES192 AES
 personal-digest-preferences SHA512 SHA384 SHA256
 personal-compress-preferences ZLIB BZIP2 ZIP Uncompressed
@@ -218,9 +300,9 @@ list-options show-uid-validity
 verify-options show-uid-validity
 with-fingerprint
 require-cross-certification
-no-symkey-cache
 throw-keyids
 use-agent
+EOF
 ```
 
 Disable networking for the remainder of the setup.
@@ -229,18 +311,17 @@ Disable networking for the remainder of the setup.
 
 The first key to generate is the master key. It will be used for certification only - to issue subkeys that are used for encryption, signing and authentication. This master key should be kept offline at all times and only accessed to revoke or issue new subkeys.
 
-You'll be prompted to enter and verify a passphrase - keep it handy as you'll need it throughout. To generate a strong passphrase which could be written down in a hidden or secure place; or memorized:
-
-```console
-$ gpg --gen-random -a 0 24
-ydOmByxmDe63u7gqx2XI9eDgpvJwibNH
-```
+You'll be prompted to enter and verify a passphrase - keep it handy as you'll need it throughout.
 
 Generate a new key with GPG, selecting `(8) RSA (set your own capabilities)`, `Certify`-only and `4096` bit keysize. Do not set the key to expire - see [Note #3](#notes).
 
 ```console
-$ gpg --expert --full-generate-key
+$ gpg2 --expert --full-gen-key
+gpg (GnuPG) 2.1.11; Copyright (C) 2016 Free Software Foundation, Inc.
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.
 
+gpg: keybox '/media/ubuntu-gnome/sekrit/.gnupg/pubring.kbx' created
 Please select what kind of key you want:
    (1) RSA and RSA (default)
    (2) DSA and Elgamal
@@ -251,21 +332,10 @@ Please select what kind of key you want:
    (9) ECC and ECC
   (10) ECC (sign only)
   (11) ECC (set your own capabilities)
-  (13) Existing key
 Your selection? 8
 
-Possible actions for a RSA key: Sign Certify Encrypt Authenticate
-Current allowed actions: Sign Certify Encrypt
-
-   (S) Toggle the sign capability
-   (E) Toggle the encrypt capability
-   (A) Toggle the authenticate capability
-   (Q) Finished
-
-Your selection? E
-
-Possible actions for a RSA key: Sign Certify Encrypt Authenticate
-Current allowed actions: Sign Certify
+Possible actions for a RSA key: Sign Certify Encrypt Authenticate 
+Current allowed actions: Sign Certify Encrypt 
 
    (S) Toggle the sign capability
    (E) Toggle the encrypt capability
@@ -274,15 +344,25 @@ Current allowed actions: Sign Certify
 
 Your selection? S
 
-Possible actions for a RSA key: Sign Certify Encrypt Authenticate
-Current allowed actions: Certify
+Possible actions for a RSA key: Sign Certify Encrypt Authenticate 
+Current allowed actions: Certify Encrypt 
 
    (S) Toggle the sign capability
    (E) Toggle the encrypt capability
    (A) Toggle the authenticate capability
    (Q) Finished
 
-Your selection? Q
+Your selection? E
+
+Possible actions for a RSA key: Sign Certify Encrypt Authenticate 
+Current allowed actions: Certify 
+
+   (S) Toggle the sign capability
+   (E) Toggle the encrypt capability
+   (A) Toggle the authenticate capability
+   (Q) Finished
+
+Your selection? q
 RSA keys may be between 1024 and 4096 bits long.
 What keysize do you want? (2048) 4096
 Requested keysize is 4096 bits
@@ -298,29 +378,31 @@ Is this correct? (y/N) y
 
 GnuPG needs to construct a user ID to identify your key.
 
-Real name: Dr Duh
-Email address: doc@duh.to
-Comment: [Optional - leave blank]
+Real name: Joe Friday
+Email address: joe@lapd.org
+Comment: I carry a badge
 You selected this USER-ID:
-    "Dr Duh <doc@duh.to>"
+    "Joe Friday (I carry a badge) <joe@lapd.org>"
 
 Change (N)ame, (C)omment, (E)mail or (O)kay/(Q)uit? o
-
 We need to generate a lot of random bytes. It is a good idea to perform
 some other action (type on the keyboard, move the mouse, utilize the
 disks) during the prime generation; this gives the random number
 generator a better chance to gain enough entropy.
-gpg: /tmp.FLZC0xcM/trustdb.gpg: trustdb created
-gpg: key 0xFF3E7D88647EBCDB marked as ultimately trusted
-gpg: directory '/tmp.FLZC0xcM/openpgp-revocs.d' created
-gpg: revocation certificate stored as '/tmp.FLZC0xcM/openpgp-revocs.d/011CE16BD45B27A55BA8776DFF3E7D88647EBCDB.rev'
+gpg: /media/ubuntu-gnome/sekrit/.gnupg/trustdb.gpg: trustdb created
+gpg: key 0x5A8386DE237578FC marked as ultimately trusted
+gpg: directory '/media/ubuntu-gnome/sekrit/.gnupg/openpgp-revocs.d' created
+gpg: revocation certificate stored as '/media/ubuntu-gnome/sekrit/.gnupg/openpgp-revocs.d/0711A7A3BAF392D089BED7BE5A8386DE237578FC.rev'
 public and secret key created and signed.
 
-Note that this key cannot be used for encryption.  You may want to use
-the command "--edit-key" to generate a subkey for this purpose.
-pub   rsa4096/0xFF3E7D88647EBCDB 2017-10-09 [C]
-      Key fingerprint = 011C E16B D45B 27A5 5BA8  776D FF3E 7D88 647E BCDB
-uid                              Dr Duh <doc@duh.to>
+gpg: checking the trustdb
+gpg: marginals needed: 3  completes needed: 1  trust model: PGP
+gpg: depth: 0  valid:   1  signed:   0  trust: 0-, 0q, 0n, 0m, 0f, 1u
+pub   rsa4096/0x5A8386DE237578FC 2019-02-05 []
+      Key fingerprint = 0711 A7A3 BAF3 92D0 89BE  D7BE 5A83 86DE 2375 78FC
+uid                   [ultimate] Joe Friday (I carry a badge) <joe@lapd.org>
+
+$ export KEYID=0x5A8386DE237578FC
 ```
 
 As of GPG [version 2.1](https://www.gnupg.org/faq/whats-new-in-2.1.html#autorev), a revocation certificate is automatically generated at this time.
@@ -336,7 +418,20 @@ $ export KEYID=0xFF3E7D88647EBCDB
 Edit the Master key to add subkeys:
 
 ```console
-$ gpg --expert --edit-key $KEYID
+$ gpg2 --expert --edit-key $KEYID
+gpg (GnuPG) 2.1.11; Copyright (C) 2016 Free Software Foundation, Inc.
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.
+
+gpg: starting migration from earlier GnuPG versions
+gpg: porting secret keys from '/media/ubuntu-gnome/sekrit/.gnupg/secring.gpg' to gpg-agent
+gpg: migration succeeded
+Secret key is available.
+
+sec  rsa4096/0x5A8386DE237578FC
+     created: 2019-02-05  expires: never       usage: C   
+     trust: ultimate      validity: ultimate
+[ultimate] (1). Joe Friday (I carry a badge) <joe@lapd.org>
 
 Secret key is available.
 
@@ -348,7 +443,7 @@ sec  rsa4096/0xEA5DE91459B80592
 
 Use 4096-bit keysize - or 2048-bit on NEO.
 
-Use a 1 year expiration - it can always be renewed using the offline Master certification key.
+I am going to choose to never expire on all the keys. Use your own judgement or get advice from someone with more clue.
 
 ## Signing
 
@@ -356,12 +451,6 @@ Create a [signing key](https://stackoverflow.com/questions/5421107/can-rsa-be-bo
 
 ```console
 gpg> addkey
-Key is protected.
-
-You need a passphrase to unlock the secret key for
-user: "Dr Duh <doc@duh.to>"
-4096-bit RSA key, ID 0xFF3E7D88647EBCDB, created 2016-05-24
-
 Please select what kind of key you want:
    (3) DSA (sign only)
    (4) RSA (sign only)
@@ -369,6 +458,10 @@ Please select what kind of key you want:
    (6) RSA (encrypt only)
    (7) DSA (set your own capabilities)
    (8) RSA (set your own capabilities)
+  (10) ECC (sign only)
+  (11) ECC (set your own capabilities)
+  (12) ECC (encrypt only)
+  (13) Existing key
 Your selection? 4
 RSA keys may be between 1024 and 4096 bits long.
 What keysize do you want? (2048) 4096
@@ -379,8 +472,8 @@ Please specify how long the key should be valid.
       <n>w = key expires in n weeks
       <n>m = key expires in n months
       <n>y = key expires in n years
-Key is valid for? (0) 1y
-Key expires at Mon 10 Sep 2018 00:00:00 PM UTC
+Key is valid for? (0) 0
+Key does not expire at all
 Is this correct? (y/N) y
 Really create? (y/N) y
 We need to generate a lot of random bytes. It is a good idea to perform
@@ -388,19 +481,13 @@ some other action (type on the keyboard, move the mouse, utilize the
 disks) during the prime generation; this gives the random number
 generator a better chance to gain enough entropy.
 
-sec  rsa4096/0xFF3E7D88647EBCDB
-    created: 2017-10-09  expires: never       usage: C
-    trust: ultimate      validity: ultimate
-ssb  rsa4096/0xBECFA3C1AE191D15
-    created: 2017-10-09  expires: 2018-10-09       usage: S
-[ultimate] (1). Dr Duh <doc@duh.to>
-```
+sec  rsa4096/0x5A8386DE237578FC
+     created: 2019-02-05  expires: never       usage: C   
+     trust: ultimate      validity: ultimate
+ssb  rsa4096/0x778898F9C94CDF18
+     created: 2019-02-05  expires: never       usage: S   
+[ultimate] (1). Joe Friday (I carry a badge) <joe@lapd.org>
 
-## Encryption
-
-Next, create an [encryption key](https://www.cs.cornell.edu/courses/cs5430/2015sp/notes/rsa_sign_vs_dec.php) by selecting `(6) RSA (encrypt only)`:
-
-```console
 gpg> addkey
 Please select what kind of key you want:
    (3) DSA (sign only)
@@ -423,8 +510,8 @@ Please specify how long the key should be valid.
       <n>w = key expires in n weeks
       <n>m = key expires in n months
       <n>y = key expires in n years
-Key is valid for? (0) 1y
-Key expires at Mon 10 Sep 2018 00:00:00 PM UTC
+Key is valid for? (0) 
+Key does not expire at all
 Is this correct? (y/N) y
 Really create? (y/N) y
 We need to generate a lot of random bytes. It is a good idea to perform
@@ -432,23 +519,15 @@ some other action (type on the keyboard, move the mouse, utilize the
 disks) during the prime generation; this gives the random number
 generator a better chance to gain enough entropy.
 
-sec  rsa4096/0xFF3E7D88647EBCDB
-    created: 2017-10-09  expires: never       usage: C
-    trust: ultimate      validity: ultimate
-ssb  rsa4096/0xBECFA3C1AE191D15
-    created: 2017-10-09  expires: 2018-10-09       usage: S
-ssb  rsa4096/0x5912A795E90DD2CF
-    created: 2017-10-09  expires: 2018-10-09       usage: E
-[ultimate] (1). Dr Duh <doc@duh.to>
-```
+sec  rsa4096/0x5A8386DE237578FC
+     created: 2019-02-05  expires: never       usage: C   
+     trust: ultimate      validity: ultimate
+ssb  rsa4096/0x778898F9C94CDF18
+     created: 2019-02-05  expires: never       usage: S   
+ssb  rsa4096/0x31ECAE1B97A1DB0E
+     created: 2019-02-05  expires: never       usage: E   
+[ultimate] (1). Joe Friday (I carry a badge) <joe@lapd.org>
 
-## Authentication
-
-Finally, create an [authentication key](https://superuser.com/questions/390265/what-is-a-gpg-with-authenticate-capability-used-for).
-
-GPG doesn't provide an authenticate-only key type, so select `(8) RSA (set your own capabilities)` and toggle the required capabilities until the only allowed action is `Authenticate`:
-
-```console
 gpg> addkey
 Please select what kind of key you want:
    (3) DSA (sign only)
@@ -463,45 +542,45 @@ Please select what kind of key you want:
   (13) Existing key
 Your selection? 8
 
-Possible actions for a RSA key: Sign Encrypt Authenticate
-Current allowed actions: Sign Encrypt
+Possible actions for a RSA key: Sign Encrypt Authenticate 
+Current allowed actions: Sign Encrypt 
 
    (S) Toggle the sign capability
    (E) Toggle the encrypt capability
    (A) Toggle the authenticate capability
    (Q) Finished
 
-Your selection? S
+Your selection? s
 
-Possible actions for a RSA key: Sign Encrypt Authenticate
-Current allowed actions: Encrypt
-
-   (S) Toggle the sign capability
-   (E) Toggle the encrypt capability
-   (A) Toggle the authenticate capability
-   (Q) Finished
-
-Your selection? E
-
-Possible actions for a RSA key: Sign Encrypt Authenticate
-Current allowed actions:
+Possible actions for a RSA key: Sign Encrypt Authenticate 
+Current allowed actions: Encrypt 
 
    (S) Toggle the sign capability
    (E) Toggle the encrypt capability
    (A) Toggle the authenticate capability
    (Q) Finished
 
-Your selection? A
+Your selection? e
 
-Possible actions for a RSA key: Sign Encrypt Authenticate
-Current allowed actions: Authenticate
+Possible actions for a RSA key: Sign Encrypt Authenticate 
+Current allowed actions: 
 
    (S) Toggle the sign capability
    (E) Toggle the encrypt capability
    (A) Toggle the authenticate capability
    (Q) Finished
 
-Your selection? Q
+Your selection? a
+
+Possible actions for a RSA key: Sign Encrypt Authenticate 
+Current allowed actions: Authenticate 
+
+   (S) Toggle the sign capability
+   (E) Toggle the encrypt capability
+   (A) Toggle the authenticate capability
+   (Q) Finished
+
+Your selection? q
 RSA keys may be between 1024 and 4096 bits long.
 What keysize do you want? (2048) 4096
 Requested keysize is 4096 bits
@@ -511,8 +590,8 @@ Please specify how long the key should be valid.
       <n>w = key expires in n weeks
       <n>m = key expires in n months
       <n>y = key expires in n years
-Key is valid for? (0) 1y
-Key expires at Mon 10 Sep 2018 00:00:00 PM UTC
+Key is valid for? (0) 
+Key does not expire at all
 Is this correct? (y/N) y
 Really create? (y/N) y
 We need to generate a lot of random bytes. It is a good idea to perform
@@ -520,16 +599,16 @@ some other action (type on the keyboard, move the mouse, utilize the
 disks) during the prime generation; this gives the random number
 generator a better chance to gain enough entropy.
 
-sec  rsa4096/0xFF3E7D88647EBCDB
-    created: 2017-10-09  expires: never       usage: C
-    trust: ultimate      validity: ultimate
-ssb  rsa4096/0xBECFA3C1AE191D15
-    created: 2017-10-09  expires: 2018-10-09       usage: S
-ssb  rsa4096/0x5912A795E90DD2CF
-    created: 2017-10-09  expires: 2018-10-09       usage: E
-ssb  rsa4096/0x3F29127E79649A3D
-    created: 2017-10-09  expires: 2018-10-09       usage: A
-[ultimate] (1). Dr Duh <doc@duh.to>
+sec  rsa4096/0x5A8386DE237578FC
+     created: 2019-02-05  expires: never       usage: C   
+     trust: ultimate      validity: ultimate
+ssb  rsa4096/0x778898F9C94CDF18
+     created: 2019-02-05  expires: never       usage: S   
+ssb  rsa4096/0x31ECAE1B97A1DB0E
+     created: 2019-02-05  expires: never       usage: E   
+ssb  rsa4096/0x9F1F80063BEE3F05
+     created: 2019-02-05  expires: never       usage: A   
+[ultimate] (1). Joe Friday (I carry a badge) <joe@lapd.org>
 
 gpg> save
 ```
@@ -539,15 +618,15 @@ gpg> save
 List the generated secret keys and verify the output:
 
 ```console
-$ gpg --list-secret-keys
-/tmp.FLZC0xcM/pubring.kbx
--------------------------------------------------------------------------
-sec   rsa4096/0xFF3E7D88647EBCDB 2017-10-09 [C]
-      Key fingerprint = 011C E16B D45B 27A5 5BA8  776D FF3E 7D88 647E BCDB
-uid                            Dr Duh <doc@duh.to>
-ssb   rsa4096/0xBECFA3C1AE191D15 2017-10-09 [S] [expires: 2018-10-09]
-ssb   rsa4096/0x5912A795E90DD2CF 2017-10-09 [E] [expires: 2018-10-09]
-ssb   rsa4096/0x3F29127E79649A3D 2017-10-09 [A] [expires: 2018-10-09]
+$ gpg2 --list-secret-keys 
+/media/ubuntu-gnome/sekrit/.gnupg/pubring.kbx
+---------------------------------------------
+sec   rsa4096/0x5A8386DE237578FC 2019-02-05 [C]
+      Key fingerprint = 0711 A7A3 BAF3 92D0 89BE  D7BE 5A83 86DE 2375 78FC
+uid                   [ultimate] Joe Friday (I carry a badge) <joe@lapd.org>
+ssb   rsa4096/0x778898F9C94CDF18 2019-02-05 [S]
+ssb   rsa4096/0x31ECAE1B97A1DB0E 2019-02-05 [E]
+ssb   rsa4096/0x9F1F80063BEE3F05 2019-02-05 [A]
 ```
 
 **Optional** Add any additional identities or email addresses now using the `adduid` command.
@@ -555,9 +634,21 @@ ssb   rsa4096/0x3F29127E79649A3D 2017-10-09 [A] [expires: 2018-10-09]
 To verify with OpenPGP key checks, use the automated [key best practice checker](https://riseup.net/en/security/message-security/openpgp/best-practices#openpgp-key-checks):
 
 ```console
-$ sudo apt-get install hopenpgp-tools
+$ gpg2 --export $KEYID | hokey lint
+hokey (hopenpgp-tools) 0.17
+Copyright (C) 2012-2015  Clint Adams
+hokey comes with ABSOLUTELY NO WARRANTY. This is free software, and you are welcome to redistribute it under certain conditions.
 
-$ gpg --export $KEYID | hokey lint
+Key has potential validity: good
+Key has fingerprint: 0711 A7A3 BAF3 92D0 89BE  D7BE 5A83 86DE 2375 78FC
+Checking to see if key is OpenPGPv4: V4
+Checking to see if key is RSA or DSA (>= 2048-bit): RSA 4096
+Checking user-ID- and user-attribute-related items:
+  Joe Friday (I carry a badge) <joe@lapd.org>:
+    Self-sig hash algorithms: [SHA-512]
+    Preferred hash algorithms: [SHA-512, SHA-384, SHA-256]
+    Key expiration times: []
+    Key usage flags: [[certify-keys]]
 ```
 
 The output will display any problems with your key in red text. If everything is green, your key passes each of the tests. If it is red, your key has failed one of the tests.
@@ -571,228 +662,22 @@ The Master and subkeys will be encrypted with your passphrase when exported.
 Save a copy of your keys:
 
 ```console
-$ gpg --armor --export-secret-keys $KEYID > $GNUPGHOME/mastersub.key
-
-$ gpg --armor --export-secret-subkeys $KEYID > $GNUPGHOME/sub.key
-```
-
-On Windows, note that using any extension other than `.gpg` or attempting IO redirection to a file will garble the secret key, making it impossible to import it again at a later date:
-
-```console
-$ gpg --armor --export-secret-keys $KEYID -o \path\to\dir\mastersub.gpg
-
-$ gpg --armor --export-secret-subkeys $KEYID -o \path\to\dir\sub.gpg
+$ pushd /media/ubuntu-gnome/sekrit
+$ gpg2 --armor --export-secret-keys $KEYID > mastersub.key
+$ gpg2 --armor --export-secret-subkeys $KEYID > sub.key
 ```
 
 # Backup keys
 
 Once GPG keys are moved to YubiKey, they cannot be extracted again!
 
-Make sure you have made an **encrypted** backup before proceeding. An encrypted USB drive or container can be made using [VeraCrypt](https://www.veracrypt.fr/en/Downloads.html).
+Make sure you have made an **encrypted** backup before proceeding.
+
+```console
+$ cp -a .gnupg .gnupg-original
+```
 
 Also consider using a [paper copy](https://www.jabberwocky.com/software/paperkey/) of the keys as an additional backup measure.
-
-## Linux
-
-Attach a USB disk and check its label:
-
-```console
-$ sudo dmesg | tail
-scsi8 : usb-storage 2-1:1.0
-usbcore: registered new interface driver usb-storage
-scsi 8:0:0:0: USB 0: 0 ANSI: 6
-sd 8:0:0:0: Attached scsi generic sg4 type 0
-sd 8:0:0:0: [sde] 62980096 512-byte logical blocks: (32.2 GB/30.0 GiB)
-sd 8:0:0:0: [sde] Write Protect is off
-sd 8:0:0:0: [sde] Mode Sense: 43 00 00 00
-sd 8:0:0:0: [sde] Attached SCSI removable disk
-```
-
-Check the size to make sure it's the right device:
-
-```console
-$ sudo fdisk -l /dev/sde
-Disk /dev/sde: 30 GiB, 32245809152 bytes, 62980096 sectors
-/dev/sde1        2048 62980095 62978048  30G  6 FAT16
-```
-
-Erase and create a new partition table:
-
-```console
-$ sudo fdisk /dev/sde
-Welcome to fdisk (util-linux 2.25.2).
-
-Command (m for help): o
-Created a new DOS disklabel with disk identifier 0xeac7ee35.
-
-Command (m for help): w
-The partition table has been altered.
-Calling ioctl() to re-read partition table.
-Syncing disks.
-```
-
-Remove and reinsert the USB drive, then create a new partition, selecting defaults:
-
-```console
-$ sudo fdisk /dev/sde
-Welcome to fdisk (util-linux 2.25.2).
-
-Command (m for help): n
-Partition type
-   p   primary (0 primary, 0 extended, 4 free)
-   e   extended (container for logical partitions)
-Select (default p): p
-Partition number (1-4, default 1): 1
-First sector (2048-62980095, default 2048):
-Last sector, +sectors or +size{K,M,G,T,P} (2048-62980095, default 62980095):
-
-Created a new partition 1 of type 'Linux' and of size 30 GiB.
-
-Command (m for help): w
-The partition table has been altered.
-Calling ioctl() to re-read partition table.
-Syncing disks.
-```
-
-Use [LUKS](https://askubuntu.com/questions/97196/how-secure-is-an-encrypted-luks-filesystem) to encrypt the new partition:
-
-```console
-$ sudo cryptsetup luksFormat /dev/sde1
-
-WARNING!
-========
-This will overwrite data on /dev/sde1 irrevocably.
-
-Are you sure? (Type uppercase yes): YES
-Enter passphrase:
-Verify passphrase:
-```
-
-Mount the partition:
-
-```console
-$ sudo cryptsetup luksOpen /dev/sde1 usb
-Enter passphrase for /dev/sde1:
-```
-
-Create a filesystem:
-
-```console
-$ sudo mkfs.ext4 /dev/mapper/usb -L usb
-mke2fs 1.43.4 (31-Jan-2017)
-Creating filesystem with 7871744 4k blocks and 1970416 inodes
-Superblock backups stored on blocks:
-        32768, 98304, 163840, 229376, 294912, 819200, 884736, 1605632, 2654208,
-        4096000
-
-Allocating group tables: done
-Writing inode tables: done
-Creating journal (32768 blocks): done
-Writing superblocks and filesystem accounting information: done
-```
-
-Mount the filesystem and copy the temporary GNUPG directory:
-
-```console
-$ sudo mkdir /mnt/encrypted-usb
-
-$ sudo mount /dev/mapper/usb /mnt/encrypted-usb
-
-$ sudo cp -avi $GNUPGHOME /mnt/encrypted-usb
-```
-
-Keep the backup mounted if you plan on setting up two or more keys as `keytocard` **will [delete](https://lists.gnupg.org/pipermail/gnupg-users/2016-July/056353.html) the local copy** on save.
-
-Otherwise, unmount and disconnected the encrypted USB disk:
-
-```console
-$ sudo umount /mnt
-
-$ sudo cryptsetup luksClose usb
-```
-
-## OpenBSD
-
-Attach a USB disk and determine its label:
-
-```console
-$ dmesg | grep sd.\ at
-sd2 at scsibus5 targ 1 lun 0: <Samsung, Flash Drive DUO, 1100> SCSI4 0/direct removable serial.50010000000000000001
-```
-
-Print the existing partitions to make sure it's the right device:
-
-```console
-$ doas disklabel -h sd2
-```
-
-Initialize the disk by creating an `a` partition with FS type `RAID`:
-
-```console
-$ doas fdisk -iy sd2
-Writing MBR at offset 0.
-
-$ doas disklabel -E sd2
-Label editor (enter '?' for help at any prompt)
-> a a
-offset: [64]
-size: [62653436]
-FS type: [4.2BSD] RAID
-> w
-> q
-No label changes.
-
-$ doas bioctl -c C -l sd2a softraid0
-New passphrase:
-Re-type passphrase:
-softraid0: CRYPTO volume attached as sd3
-```
-
-Make an `i` partition, then make and mount the filesystem:
-
-```console
-$ doas fdisk -iy sd3
-Writing MBR at offset 0.
-
-$ doas disklabel -E sd3
-Label editor (enter '?' for help at any prompt)
-> a i
-offset: [64]
-size: [62637371]
-FS type: [4.2BSD]
-> w
-> q
-No label changes.
-
-$ doas newfs sd3i
-/dev/rsd3i: 30584.6MB in 62637344 sectors of 512 bytes
-152 cylinder groups of 202.47MB, 12958 blocks, 25984 inodes each
-super-block backups (for fsck -b #) at:
- 32, 414688, 829344, 1244000, 1658656, 2073312, 2487968, 2902624, 3317280, 3731936, 4146592, 4561248, 4975904,
-[...]
-```
-
-Mount the filesystem and copy the temporary GNUPG directory:
-
-```console
-$ doas mkdir /mnt/encrypted-usb
-
-$ doas mount /dev/sd3i /mnt/encrypted-usb
-
-$ doas cp -avi $GNUPGHOME /mnt/encrypted-usb
-```
-
-Keep the backup mounted if you plan on setting up two or more keys as `keytocard` **will [delete](https://lists.gnupg.org/pipermail/gnupg-users/2016-July/056353.html) the local copy** on save.
-
-Otherwise, unmount and disconnected the encrypted USB disk:
-
-```console
-$ doas umount /mnt/encrypted-usb
-
-$ doas bioctl -d sd3
-```
-
-See [OpenBSD FAQ#14](https://www.openbsd.org/faq/faq14.html#softraidCrypto) for more information.
 
 # Configure YubiKey
 
@@ -809,8 +694,6 @@ Commit? (y/n) [n]: y
 ```
 
 The -m option is the mode command. To see the different modes, enter `ykpersonalize -help`. Mode 82 (in hex) enables the YubiKey NEO as a composite USB device (HID + CCID).  Once you have changed the mode, you need to re-boot the YubiKey, so remove and re-insert it. On YubiKey NEO with firmware version 3.3 or higher, you can enable composite USB device with `-m86` instead of `-m82`.
-
-**Windows** Use the [YubiKey NEO Manager](https://www.yubico.com/products/services-software/download/yubikey-neo-manager/) to enable CCID functionality.
 
 # Configure Smartcard
 
@@ -1053,12 +936,6 @@ Mount another USB disk to copy the *public* key, or save it somewhere where it c
 $ gpg --armor --export $KEYID > /mnt/public-usb-key/pubkey.txt
 ```
 
-Windows:
-
-```console
-$ gpg --armor --export $KEYID -o \path\to\dir\pubkey.gpg
-```
-
 **Optional** Upload the public key to a [public keyserver](https://debian-administration.org/article/451/Submitting_your_GPG_key_to_a_keyserver):
 
 ```console
@@ -1082,13 +959,7 @@ Ensure you have:
 * Saved the password to that encrypted volume in a separate location.
 * Saved a copy of the public key somewhere easily accessible later.
 
-Reboot or [securely delete](http://srm.sourceforge.net/) `$GNUPGHOME` and remove the secret keys from the GPG keyring:
-
-```console
-$ sudo srm -r $GNUPGHOME || sudo rm -rf $GNUPGHOME
-
-$ gpg --delete-secret-key $KEYID
-```
+:
 
 **Important** Make sure you have securely erased all generated keys and revocation certificates if a Live image was not used!
 
@@ -1099,14 +970,8 @@ You can reboot back into the Live image to test YubiKey.
 Install required programs:
 
 ```console
-$ sudo apt-get update
-
-$ sudo apt-get install -y \
-     curl gnupg2 gnupg-agent \
-     cryptsetup scdaemon pcscd
+$ sudo apt install -y scdaemon pcscd
 ```
-
-Download [drduh/config/gpg.conf](https://github.com/drduh/config/blob/master/gpg.conf):
 
 ```console
 $ mkdir ~/.gnupg ; curl -o ~/.gnupg/gpg.conf https://raw.githubusercontent.com/drduh/config/master/gpg.conf
