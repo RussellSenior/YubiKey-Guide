@@ -674,6 +674,7 @@ Once GPG keys are moved to YubiKey, they cannot be extracted again!
 Make sure you have made an **encrypted** backup before proceeding.
 
 ```console
+$ pushd $GNUPGHOME
 $ cp -a .gnupg .gnupg-original
 ```
 
@@ -959,7 +960,9 @@ Ensure you have:
 * Saved the password to that encrypted volume in a separate location.
 * Saved a copy of the public key somewhere easily accessible later.
 
-:
+```console
+gpg2 --delete-secret-key $KEYID
+```
 
 **Important** Make sure you have securely erased all generated keys and revocation certificates if a Live image was not used!
 
